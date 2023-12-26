@@ -12,7 +12,7 @@ import time
 class Robot:
     
     # Dichiarazione delle costanti
-    SPEED_NORMAL = 30  # Velocità predefinita
+    SPEED_NORMAL = 50  # Velocità predefinita
     LIGHT_THRESHOLD_HIGHER = 50  # Limite riflesso canale rosso e blu
     LIGHT_THRESHOLD_LOWER = 40  # Minimo canale verde
     
