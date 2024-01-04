@@ -121,7 +121,7 @@ class Robot:
         self.motor_left.run_time(150, 1000, then=Stop.HOLD, wait=True)
         
         # Vai avanti finché uno dei due sensori non vede la linea nera
-        while sum(self.light_left.rgb()) >= 50 or sum(self.light_left.rgb()) >= 50:
+        while sum(self.light_left.rgb()) <= 50 or sum(self.light_left.rgb()) <= 50:
             self.motor_left.dc(30)
             self.motor_right.dc(30)
             
