@@ -8,151 +8,100 @@ from pybricks.robotics import DriveBase
 from pybricks.media.ev3dev import SoundFile, ImageFile
 import time
 
-
+# inizializzazione dell'oggetto robot
 class Robot:
+  
+  # costanti di sistema (DA CALIBRARE)
+  DEFAULT_SPEED = 30 # velocità di default
+  COLOR_BLACK = 0 # valore di riflessione del nero
+  COLOR_WHITE = 100 # valore di riflessione del bianco
+  DEVIATION = 5 # errore di misura
+  
+  # inizializzazione dell'oggetto
+  def __init__(self, motor_left, motor_right, color_left, color_center, color_right, ultrasonic):
     
-    # Dichiarazione delle costanti
-    SPEED_NORMAL = 50  # Velocità predefinita
-    LIGHT_THRESHOLD_HIGHER = 50  # Limite riflesso canale rosso e blu
-    LIGHT_THRESHOLD_LOWER = 40  # Minimo canale verde
+    # dichiarazione dei motori
+    self.motor_left = motor_left # mtore di sinistra
+    self.motor_right = motor_rght # motore di destra
     
-    # Inizializzazione dell'oggetto robot
-    def __init__(self, motor_left, motor_right, light_left, light_right, ultrasonic):
-        
-        # Assegnazione di motori e sensori
-        self.motor_left = motor_left
-        self.motor_right = motor_right
-        self.light_left = light_left
-        self.light_right = light_right
-        self.ultrasonic = ultrasonic
-
-        # Assegnazione delle variabili del PID
-        self.kp = 1  # Costante proporzionale
-        self.ki = 0  # Costante integrale
-        self.kd = 0  # Costante derivativa
-        self.prev_error = 0  # Errore precedente
-        self.integral = 0  # Valore integrale
-
-    # Metodo per seguire la linea (PID)
-    def follow_line(self):
-        
-        # Calcolo dell'errore
-        error = sum(self.light_left.rgb()) - sum(self.light_right.rgb())  # Somma rgb_sinistro - somma rgb_destro
-
-        # Verifico se i due sensori vedono lo stesso colore BIANCO/NERO
-        if -15 <= error <= 15:
-            # Se VERO, vado dritto
-            self.motor_left.dc(self.SPEED_NORMAL)
-            self.motor_right.dc(self.SPEED_NORMAL)
+    # dichiarazione dei sensori
+    self.color_left = color_left # sensore di colore sinistro (controllo verde)
+    self.color_center = color_center # sensore di colore centrale (seguilinea)
+    self.color_right = color_right # sensore di colore destro (controllo verde)
+    
+    # dichiarazione della drive base (drive base è un oggetto)
+    self.drive_base = DriveBase(left_motor, right_motor, wheel_diameter=55.5, axle_track=104) 
+    
+    self.kp = 1 # coefficiente proporzionale di sterzata
+    self.target = (self.COLOR_BLACK + self.COLOR_WHITE) / 2 # valore target del seguilinea
+    
+  # metodo per seguire la linea
+  def follow_line(self):
+    
+    # se il sensore destro e il sensore sinistro vede il bianco e il sensore centrale vede il bianco entro l'errore di misura
+    if self.color_left.color() == self.color_right.color() and ((self.COLOR_WHITE - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_WHITE + self.DEVIATION)):
+      self.drive_base.drive(self.DEFAULT_SPEED, 0) # prosegui dritto
+    else:
+      deviation = self.color_center.reflection() - self.target # clacola la deviazione dalla linea in base a quanto cambia dal valore target
+      turn_rate = deviation * self.kp # calcola il rapporto di sterzata
+      self.drive_base.drive(self.DEFAULT_SPEED, turn_rate) # gira con il rapporto di setrzata a velocità predefinita
+      
+  # metodo per rilevare l'intersezione
+  def detect_intersection(self):
+    if self.color_left.color() == Color.GREEN: # se il sensore sinistro vede il verde
+      if self.color_right.color() == Color.GREEN: # se lo vede anche il destro
+        return 'back' # direzione: indietro
+      else: # se il destro non lo vede
+        return 'left' # direzione: sinistra
+    elif self.color_right.color() == Color.GREEN: # se il sensore destro vede il verde
+      return 'right' # direzione: destra
+    else: # senno significa che nessuno dei due vede il verde
+      return 'none' # non esiste l'intersezione
+    
+  
+  # metodo per girare   
+  def turn_intersection(self, direction):
+    if direction == 'left': # se la direzione è sinistra
+      self.motor_left.hold() # ferma motore sinistro
+      self.motor_right.hold() # ferma motore destro
+      time.sleep(0.3) # aspetta
+      self.motor_right.run_time(100, 4000, then = Stop.HOLD, wait = True) # gira a sinistra
+    elif directiont == 'right': # se la direzione è destra
+      self.motor_left.hold() # ferma motore sinistro 
+      self.motor_right.hold() # ferma motore destro
+      time.sleep(0.3) # aspetta
+      self.motor_left.run_time(100, 4000, then = Stop.HOLD, wait = True) # gira a destra
+    else:
+      self.motor_left.dc(self.DEFAULT_SPEED) # imposta velocità destra 
+      self.motor_right.dc(self.DEFAULT_SPEED) # imposta velocità sinistra
+      time.sleep(0.5) # aspetta
+      self.motor_right.dc(-50) # inizia a girare
+      self.motor_left.dc(50)   #  su te stesso
+      time.sleep(3.25) # fallo per t secondi
+      # self.motor_left.dc(self.DEFAULT_SPEED) # imposta velocità destra 
+      # self.motor_right.dc(self.DEFAULT_SPEED) # imposta velocità sinistra
+      # time.sleep(0.5) # aspetta
+      
+  # loop principale
+  def run(self):
+    while True:
+      # controlla la distanza dell'ultrasuoni
+      if self.ultrasonic.distance() < 50:
+        self.avoid_obstacle() # evita l'ostacolo
+      else: 
+        intersection_result = self.detect_intersection() # rileva l'ostacolo
+        # se non c'è l'ostacolo segui la linea
+        if intersection_result == 'none':
+          self.follow_line()
         else:
-            # Se FALSO, calcolo la velocità da assegnare ai motori
-            self.integral += error  # Calcolo l'integrale tenendo conto del nuovo errore
-            derivative = error - self.prev_error  # Calcolo della derivata come differenza dell'errore attuale con quello precedente
-            velocity = (error * self.kp) + (self.integral * self.ki) + (derivative * self.kd)  # Calcolo la velocità con la somma pesata di errore, integrale e derivata 
-            self.motor_left.dc(self.SPEED_NORMAL + velocity)  # Assegno la velocità al motore sinistro
-            self.motor_right.dc(self.SPEED_NORMAL - velocity)  # Assegno la velocità al motore destro
-            self.prev_error = error  # Aggiorno il valore dell'errore precedente che mi servirà nel loop successivo
-    
-    # Metodo per verificare la presenza delle intersezioni
-    def detect_intersection(self):
-        
-        # Ottengo i valori dei sensori
-        color_left = self.light_left.rgb()
-        color_right = self.light_right.rgb()
+          # se l'intersezione c'è gira nella direzione dell'intersezione
+          self.turn_intersection(intersection_result)
+          
+      wait(10)
 
-        # Se il sensore SINISTRO VEDE il VERDE e il sensore DESTRO NON VEDE il VERDE
-        if (
-            (color_left[0] <= self.LIGHT_THRESHOLD_LOWER and color_left[1] >= self.LIGHT_THRESHOLD_HIGHER and color_left[2] <= self.LIGHT_THRESHOLD_LOWER) and
-            not (color_right[0] <= self.LIGHT_THRESHOLD_LOWER and color_right[1] >= self.LIGHT_THRESHOLD_HIGHER and color_right[2] <= self.LIGHT_THRESHOLD_LOWER)
-        ):
-            return 'left'  # Comando: gira a SINISTRA
-        
-        # Se il sensore SINISTRO NON VEDE il VERDE e il sensore DESTRO VEDE il VERDE
-        elif (
-            not (color_left[0] <= self.LIGHT_THRESHOLD_LOWER and color_left[1] >= self.LIGHT_THRESHOLD_HIGHER and color_left[2] <= self.LIGHT_THRESHOLD_LOWER) and
-            (color_right[0] <= self.LIGHT_THRESHOLD_LOWER and color_right[1] >= self.LIGHT_THRESHOLD_HIGHER and color_right[2] <= self.LIGHT_THRESHOLD_LOWER)
-        ):
-            return 'right'  # Comando: gira a DESTRA
-        
-        # Se il sensore SINISTRO VEDE il VERDE e il sensore DESTRO VEDE il VERDE
-        elif (
-            (color_left[0] <= self.LIGHT_THRESHOLD_LOWER and color_left[1] >= self.LIGHT_THRESHOLD_HIGHER and color_left[2] <= self.LIGHT_THRESHOLD_LOWER) and
-            (color_right[0] <= self.LIGHT_THRESHOLD_LOWER and color_right[1] >= self.LIGHT_THRESHOLD_HIGHER and color_right[2] <= self.LIGHT_THRESHOLD_LOWER)
-        ):
-            return 'back'  # Comando: gira INDIETRO
-        
-        # Se NESSUNO dei casi precedenti è verificato, allora NON CE L'INTERSEZIONE
-        else:
-            return 'noIntersection'  # Comando: NON ESISTE INTERSEZIONE
-    
-    # Metodo per girare (viene chiamato solo se CE l'intersezione)
-    def turn_intersection(self, direction):
-        
-        # Se comando: gira a SINISTRAå
-        if direction == 'left':
-            self.motor_left.run_time(-150, 1000, then=Stop.HOLD, wait=True)
-            self.motor_right.run_time(150, 1000, then=Stop.HOLD, wait=True)
-        
-        # Se comando: gira a DESTRA
-        elif direction == 'right':
-            self.motor_right.run_time(-150, 1000, then=Stop.HOLD, wait=True)
-            self.motor_left.run_time(150, 1000, then=Stop.HOLD, wait=True)
-            
-        # Se comando: gira INDIETRO
-        else:
-            self.motor_right.run_time(-150, 1000, then=Stop.HOLD, wait=True)
-            self.motor_left.run_time(150, 1000, then=Stop.HOLD, wait=True)
-            
-            
-    # Metodo per evitare l'ostacolo       
-    def avoid_obstacle(self):
-        
-        # Gira a SINISTRA di 45 gradi
-        self.motor_left.run_time(-150, 1000, then=Stop.HOLD, wait=True)
-        self.motor_right.run_time(150, 1000, then=Stop.HOLD, wait=True)
-        
-        # Vai avanti per 1 secondo
-        self.motor_left.dc(30)
-        self.motor_right.dc(30)
-        time.sleep(1)
-        
-        # Gira a DESTRA di 45 gradi
-        self.motor_right.run_time(-150, 1000, then=Stop.HOLD, wait=True)
-        self.motor_left.run_time(150, 1000, then=Stop.HOLD, wait=True)
-        
-        # Vai avanti finché uno dei due sensori non vede la linea nera
-        while sum(self.light_left.rgb()) <= 50 or sum(self.light_left.rgb()) <= 50:
-            self.motor_left.dc(30)
-            self.motor_right.dc(30)
-            
-    # Metodo principale 
-    def run(self):
-        while True:
-            
-            # Controlla se ce l'ostacolo
-            if self.ultrasonic.distance() <= 50:
-                
-                # Se VERO, chiama il metodo per evitarlo
-                self.avoid_obstacle()
-            else:
-                
-                # Se FALSO, chiama il metodo per controllare l'incrocio
-                intersection_result = self.detect_intersection()  # Ricorda il risultato
-
-                # Controlla il risultato
-                if intersection_result != 'noIntersection':
-                    
-                    # Se l'intersezione non ce, segui la linea normalmente
-                    self.follow_line()
-                else:
-                    # Se l'incrocio ce, chiama il metodo per girare e passa la direzione
-                    self.turn_intersection(intersection_result)
-                    
-# Main
 
 ev3 = EV3Brick()  # Avvio l'oggetto EV3
 ev3.speaker.beep()  # Verifico che si sia avviato facendo un beep
 
-robot = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S4), UltrasonicSensor(Port.S3))  # Avvia l'oggetto robot
-
-robot.run()  # Chiama il metodo principale per avviare il programma
+eugenio = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S4), ColorSensor(Port.S2), UltrasonicSensor(Port.S3))
+eugenio.run()
