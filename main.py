@@ -22,7 +22,7 @@ class Robot:
     
     # dichiarazione dei motori
     self.motor_left = motor_left # mtore di sinistra
-    self.motor_right = motor_rght # motore di destra
+    self.motor_right = motor_right # motore di destra
     
     # dichiarazione dei sensori
     self.color_left = color_left # sensore di colore sinistro (controllo verde)
@@ -30,7 +30,7 @@ class Robot:
     self.color_right = color_right # sensore di colore destro (controllo verde)
     
     # dichiarazione della drive base (drive base è un oggetto)
-    self.drive_base = DriveBase(left_motor, right_motor, wheel_diameter=55.5, axle_track=104) 
+    self.drive_base = DriveBase(self.left_motor, self.right_motor, wheel_diameter=55, axle_track=127) 
     
     self.kp = 1 # coefficiente proporzionale di sterzata
     self.target = (self.COLOR_BLACK + self.COLOR_WHITE) / 2 # valore target del seguilinea
@@ -39,59 +39,79 @@ class Robot:
   def follow_line(self):
     
     # se il sensore destro e il sensore sinistro vede il bianco e il sensore centrale vede il bianco entro l'errore di misura
-    if self.color_left.color() == self.color_right.color() and ((self.COLOR_WHITE - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_WHITE + self.DEVIATION)):
-      self.drive_base.drive(self.DEFAULT_SPEED, 0) # prosegui dritto
+    if  (self.COLOR_WHITE - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_WHITE + self.DEVIATION):
+      self.drive_base.stop()
+      self.motor_left.hold()
+      self.motor_right.hold()
+      
+      self.drive_base.reset()
+      
+      found_line = False
+      
+      while self.drive_base.distance() <= 150:
+        if (self.COLOR_BLACK - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_BLACK + self.DEVIATION):
+          found_line = True
+          self.drive_base.stop()
+          self.motor_left.hold()
+          self.motor_right.hold()
+          break
+        else:
+          self.drive_base.drive(self.DEFAULT_SPEED, 0)
+          
+      
+      if found_line == False:
+        self.drive_base.reset()
+        while abs(self.drive_base.distance()) <= 150:
+          self.drive_base.drive(-self.DESFAULT_SPEED, 0)
+        
+        while not ((self.COLOR_BLACK - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_BLACK + self.DEVIATION)):
+          self.drive_base(0, 20)
+          
     else:
-      deviation = self.color_center.reflection() - self.target # clacola la deviazione dalla linea in base a quanto cambia dal valore target
+      # calacola la deviazione dalla linea in base a quanto cambia dal valore target
+      deviation = self.target - self.color_center.reflection()
       turn_rate = deviation * self.kp # calcola il rapporto di sterzata
       self.drive_base.drive(self.DEFAULT_SPEED, turn_rate) # gira con il rapporto di setrzata a velocità predefinita
       
   # metodo per rilevare l'intersezione
   def detect_intersection(self):
-    if self.color_left.color() == Color.GREEN: # se il sensore sinistro vede il verde
-      if self.color_right.color() == Color.GREEN: # se lo vede anche il destro
-        return 'back' # direzione: indietro
-      else: # se il destro non lo vede
-        return 'left' # direzione: sinistra
-    elif self.color_right.color() == Color.GREEN: # se il sensore destro vede il verde
-      return 'right' # direzione: destra
-    else: # senno significa che nessuno dei due vede il verde
-      return 'none' # non esiste l'intersezione
-    
+    if self.color_left.color() == Color.GREEN and self.color_right.color() == Color.GREEN:
+      return 1 # indietro
+    elif self.color_left.color() == Color.GREEN and not (self.color_right.color() == Color.GREEN):
+      return 2 # sinistra
+    elif not (self.color_left.color() == Color.GREEN) and self.color_right.color() == Color.GREEN:
+      return 3 # destra
+    elif not (self.color_left.color() == Color.GREEN) and not (self.color_right.color() == Color.GREEN):
+      return 0 # continua
   
   # metodo per girare   
   def turn_intersection(self, direction):
-    if direction == 'left': # se la direzione è sinistra
+    if direction == 2: # se la direzione è sinistra
       self.motor_left.hold() # ferma motore sinistro
       self.motor_right.hold() # ferma motore destro
       time.sleep(0.3) # aspetta
-      self.motor_right.run_time(100, 4000, then = Stop.HOLD, wait = True) # gira a sinistra
-    elif directiont == 'right': # se la direzione è destra
+      self.drive_base.turn(90) # fira di 90 gradi a sinistra
+    elif directiont == 3: # se la direzione è destra
       self.motor_left.hold() # ferma motore sinistro 
       self.motor_right.hold() # ferma motore destro
       time.sleep(0.3) # aspetta
-      self.motor_left.run_time(100, 4000, then = Stop.HOLD, wait = True) # gira a destra
-    else:
+      self.drive_base.turn(-90) # gira di 90 gradi a destra
+    elif direction == 1:
       self.motor_left.dc(self.DEFAULT_SPEED) # imposta velocità destra 
       self.motor_right.dc(self.DEFAULT_SPEED) # imposta velocità sinistra
       time.sleep(0.5) # aspetta
-      self.motor_right.dc(-50) # inizia a girare
-      self.motor_left.dc(50)   #  su te stesso
-      time.sleep(3.25) # fallo per t secondi
-      # self.motor_left.dc(self.DEFAULT_SPEED) # imposta velocità destra 
-      # self.motor_right.dc(self.DEFAULT_SPEED) # imposta velocità sinistra
-      # time.sleep(0.5) # aspetta
+      self.drive_base.turn(180) # gira di 180 gradi a sinistra
       
   # loop principale
   def run(self):
     while True:
       # controlla la distanza dell'ultrasuoni
       if self.ultrasonic.distance() < 50:
-        self.avoid_obstacle() # evita l'ostacolo
+        # self.avoid_obstacle() # evita l'ostacolo
       else: 
         intersection_result = self.detect_intersection() # rileva l'ostacolo
         # se non c'è l'ostacolo segui la linea
-        if intersection_result == 'none':
+        if intersection_result == 0:
           self.follow_line()
         else:
           # se l'intersezione c'è gira nella direzione dell'intersezione
