@@ -205,7 +205,7 @@ class Robot:
             self.drive_base.turn(-45)
             wait(50)
         
-        # vai abanti finche non incontri la linea nera
+        # vai avanti finche non incontri la linea nera
         while not(self.COLOR_BLACK - self.DEVIATION <= self.color_center.reflection() <=self.COLOR_BLACK + self.DEVIATION):
             self.drive_base.drive(self.DEFAULT_SPEED, 0)  
     
@@ -231,8 +231,8 @@ class Robot:
                 wait (10) # aspeta prima del prossimo ciclo
 
 
-ev3 = EV3Brick()
-ev3.speaker.beep()
+ev3 = EV3Brick() # init oggetto brick
+ev3.speaker.beep() # verifico l'init con un beep
 
-eugenio = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S2), ColorSensor(Port.S4), UltrasonicSensor(Port.S3))
-eugenio.run()
+eugenio = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S2), ColorSensor(Port.S4), UltrasonicSensor(Port.S3)) # init oggetto robot
+eugenio.run() # inizio programma
