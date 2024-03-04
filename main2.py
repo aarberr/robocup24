@@ -33,13 +33,16 @@ class Robot:
     self.drive_base.stop()
     self.drive_base.reset()
     found_line = False
+    print('giro a destra') 
     while self.drive_base.angle() <= 150:
       if self.color_center.reflection() <= 20:
+        print('ho trovato la linea')
         found_line = True
         self.drive_base.stop()
         break
       else:
         self.drive_base.drive(10, 30)
+        print('non ho trovato la linea. cerco di nuovo')
     if not found_line:
       self.drive_base.reset()
       while abs(self.drive_base.turn()) <= 150:
@@ -49,6 +52,7 @@ class Robot:
 
   def follow_line(self):
     if (self.COLOR_WHITE - self.DEVIATION) < self.color_center.reflection() < (self.COLOR_WHITE + self.DEVIATION):
+      print('ho vosto il bianco')
       self.drive_base.stop()
       self.find_line()
     else:
@@ -58,18 +62,22 @@ class Robot:
 
   def search_green(self):
     if self.color_left.color() == Color.GREEN or self.color_right == Color.GREEN:
+      print('ho visto il verde, controllo meglio')
       self.drive_base.stop()
       wait(500)
       self.drive_base.straight(5)
       wait(500)
       if self.color_left.color() == Color.GREEN or self.color_right.color() == Color.GREEN:
+        print('era verde')
         return True 
       else:
+        print('non era verde')
         return False
     else:
       return False
 
   def verify_intersection(self):
+    print('verifico la direzione')
     left_color = self.color_left.rgb()
     right_color = self.color_right.rgb()
     if (self.RGB_LOWER[0] <= left_color[0] <= self.RGB_UPPER[0]) and (self.RGB_LOWER[1] <= left_color[1] <= self.RGB_UPPER[1]) and (self.RGB_LOWER[2] <= left_color[2] <= self.RGB_UPPER[2]):
@@ -81,22 +89,29 @@ class Robot:
     else:
       right_green = False
     if left_green and not(right_green):
+      print('verde a sinistra')
       return 1
     elif not(left_green) and right_green:
+      print('verde a destra')
       return 2
     elif left_green and right_green:
+      print('verde a sinistra e a destra')
       return 3
     else:
+      print('non vedo piu verde')
       return 0
 
   def turn_intersection(self, direction):
     self.drive_base.stop()
     self.drive_base.straight(100)
     if direction == 1:
+      print('giro a sinistra')
       self.drive_base.turn(-45)
     elif direction == 2:
+      print('giro a destra')
       self.drive_base.turn(45)
-    elif direction == 3:
+    elif direction == 3
+      print('giro indietro')
       self.drive_base.turn(135)
       self.drive_base.straight(100)
     while not(self.COLOR_BLACK - self.DEVIATION < self.color_center.reflection() < self.COLOR_BLACK + self.DEVIATION):
