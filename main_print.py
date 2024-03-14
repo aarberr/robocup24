@@ -209,5 +209,5 @@ class Robot:
          
          wait(10)
 
-eugenio = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S2), UltrasonicSensor(Port.S3))
-eugenio.run()
+Eugenio = Robot(Motor(Port.A), Motor(Port.D), ColorSensor(Port.S1), ColorSensor(Port.S2), UltrasonicSensor(Port.S3))
+Eugenio.run()
